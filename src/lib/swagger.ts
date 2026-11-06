@@ -3360,7 +3360,9 @@ All endpoints require authentication via:
                                                 type: "string",
                                                 enum: ["SUPERADMIN", "STAFF", "USER"],
                                                 default: "USER"
-                                            }
+                                            },
+                                            maxSessions: { type: "integer", minimum: 0, nullable: true, description: "Max sessions the user may own (null = unlimited)" },
+                                            generateApiKey: { type: "boolean", description: "If true, an API key is generated and returned as data.apiKey" }
                                         }
                                     }
                                 }
@@ -3392,6 +3394,29 @@ All endpoints require authentication via:
                     }
                 },
 
+                "/users/{id}/api-key": {
+                    post: {
+                        tags: ["Users"],
+                        summary: "Generate or rotate a user's API key (SUPERADMIN only)",
+                        description: "Returns the new key in data.apiKey. The previous key stops working immediately.",
+                        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+                        responses: {
+                            200: { description: "API key generated" },
+                            403: { $ref: "#/components/responses/Forbidden" },
+                            404: { description: "User not found" }
+                        }
+                    },
+                    delete: {
+                        tags: ["Users"],
+                        summary: "Revoke a user's API key (SUPERADMIN only)",
+                        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+                        responses: {
+                            200: { description: "API key revoked" },
+                            403: { $ref: "#/components/responses/Forbidden" },
+                            404: { description: "User not found" }
+                        }
+                    }
+                },
                 "/users/{id}": {
                     "delete": {
                         "tags": [
@@ -3430,7 +3455,8 @@ All endpoints require authentication via:
                                             name: { type: "string" },
                                             email: { type: "string" },
                                             password: { type: "string" },
-                                            role: { type: "string", enum: ["SUPERADMIN", "STAFF", "USER"] }
+                                            role: { type: "string", enum: ["SUPERADMIN", "STAFF", "USER"] },
+                                            maxSessions: { type: "integer", minimum: 0, nullable: true, description: "null = unlimited" }
                                         }
                                     }
                                 }

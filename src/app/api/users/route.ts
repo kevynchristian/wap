@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUser, isAdmin } from "@/lib/api-auth";
+import { getAuthenticatedUser, isAdmin, generateApiKey } from "@/lib/api-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -9,6 +9,10 @@ const createUserSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     role: z.enum(["SUPERADMIN", "STAFF", "USER"]).default("USER"),
+    // Max sessions this user may own (null/omitted = unlimited)
+    maxSessions: z.number().int().min(0).nullable().optional(),
+    // If true, an API key is generated and returned in the response (tenant provisioning)
+    generateApiKey: z.boolean().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,6 +31,7 @@ export async function GET(request: NextRequest) {
                 name: true,
                 email: true,
                 role: true,
+                maxSessions: true,
                 createdAt: true,
                 _count: {
                     select: { sessions: true }
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: false, message: "Validation error", error: parseResult.error.flatten() }, { status: 400 });
         }
 
-        const { name, email, password, role } = parseResult.data;
+        const { name, email, password, role, maxSessions, generateApiKey: wantsApiKey } = parseResult.data;
 
         // Check if email exists
         const existing = await prisma.user.findUnique({ where: { email } });
@@ -71,13 +76,17 @@ export async function POST(request: NextRequest) {
                 name,
                 email,
                 password: hashedPassword,
-                role: role as any
+                role: role as any,
+                maxSessions: maxSessions ?? null,
+                apiKey: wantsApiKey ? generateApiKey() : null
             },
             select: {
                 id: true,
                 name: true,
                 email: true,
                 role: true,
+                maxSessions: true,
+                apiKey: wantsApiKey ? true : false,
                 createdAt: true
             }
         });

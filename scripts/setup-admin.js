@@ -1,14 +1,30 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const prisma = new PrismaClient();
 
 async function main() {
-    const email = process.argv[2];
-    const password = process.argv[3];
+    // Optional flag: --api-key  → (re)generate and print the admin's API key
+    const wantsApiKey = process.argv.includes("--api-key");
+    const args = process.argv.slice(2).filter(a => a !== "--api-key");
+    const email = args[0];
+    const password = args[1];
+
+    await upsertAdmin(email, password);
+
+    if (wantsApiKey) {
+        const apiKey = `wag_${crypto.randomBytes(24).toString("base64url")}`;
+        await prisma.user.update({ where: { email }, data: { apiKey } });
+        console.log(`API key for ${email} (previous key, if any, is now revoked):`);
+        console.log(apiKey);
+    }
+}
+
+async function upsertAdmin(email, password) {
 
     if (!email) {
-        console.error("Please provide email. Usage: node scripts/setup-admin.js <email> [password]");
+        console.error("Please provide email. Usage: node scripts/setup-admin.js <email> [password] [--api-key]");
         process.exit(1);
     }
 
@@ -25,7 +41,7 @@ async function main() {
         console.log("User promoted successfully!");
     } else {
         if (!password) {
-            console.error("Password required for new user. Usage: node scripts/setup-admin.js <email> <password>");
+            console.error("Password required for new user. Usage: node scripts/setup-admin.js <email> <password> [--api-key]");
             process.exit(1);
         }
 

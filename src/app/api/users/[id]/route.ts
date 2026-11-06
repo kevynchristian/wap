@@ -18,7 +18,12 @@ export async function PATCH(
 
     try {
         const body = await request.json();
-        const { name, email, password, role } = body;
+        const { name, email, password, role, maxSessions } = body;
+
+        if (maxSessions !== undefined && maxSessions !== null &&
+            (!Number.isInteger(maxSessions) || maxSessions < 0)) {
+            return NextResponse.json({ status: false, message: "maxSessions must be a non-negative integer or null", error: "Invalid maxSessions" }, { status: 400 });
+        }
 
         // Prevent modifying own role to lock oneself out (optional safety)
         if (id === user.id && role && role !== "SUPERADMIN") {
@@ -29,6 +34,7 @@ export async function PATCH(
         if (name) updateData.name = name;
         if (email) updateData.email = email;
         if (role) updateData.role = role;
+        if (maxSessions !== undefined) updateData.maxSessions = maxSessions; // null = unlimited
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);
         }
@@ -41,6 +47,7 @@ export async function PATCH(
                 name: true,
                 email: true,
                 role: true,
+                maxSessions: true,
                 updatedAt: true
             }
         });

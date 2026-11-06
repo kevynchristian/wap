@@ -42,6 +42,7 @@ model User {
   password  String
   role      Role     @default(USER)
   apiKey    String?  @unique // API Key for authentication
+  maxSessions Int?   // Max sessions this user may own (null = unlimited). Ignored for SUPERADMIN
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
